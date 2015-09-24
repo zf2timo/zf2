@@ -7,7 +7,7 @@
  * @category   Zend
  * @package    Zend_Loader
  * @subpackage Exception
- * @copyright  Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -28,6 +28,21 @@ use Zend\Loader\StandardAutoloader;
  *                              file
  */
 
+// Setup/verify autoloading
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    // Local install
+    require __DIR__ . '/../vendor/autoload.php';
+} elseif (file_exists(getcwd() . '/vendor/autoload.php')) {
+    // Root project is current working directory
+    require getcwd() . '/vendor/autoload.php';
+} elseif (file_exists(__DIR__ . '/../../../autoload.php')) {
+    // Relative to composer install
+    require __DIR__ . '/../../../autoload.php';
+} else {
+    fwrite(STDERR, "Unable to setup autoloading; aborting\n");
+    exit(2);
+}
+
 $libPath = getenv('LIB_PATH') ? getenv('LIB_PATH') : __DIR__ . '/../library';
 if (!is_dir($libPath)) {
     // Try to load StandardAutoloader from include_path
@@ -42,10 +57,6 @@ if (!is_dir($libPath)) {
         exit(2);
     }
 }
-
-// Setup autoloading
-$loader = new StandardAutoloader(array('autoregister_zf' => true));
-$loader->register();
 
 $rules = array(
     'help|h'        => 'Get usage message',
@@ -139,7 +150,6 @@ foreach ($l as $file) {
 }
 
 if ($appending) {
-
     $content = var_export((array) $map, true) . ';';
 
     // Fix \' strings from injected DIRECTORY_SEPARATOR usage in iterator_apply op

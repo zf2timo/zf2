@@ -4,7 +4,7 @@
  * Zend Framework (http://framework.zend.com/)
  *
  * @link      http://github.com/zendframework/zf2 for the canonical source repository
- * @copyright Copyright (c) 2005-2014 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright Copyright (c) 2005-2015 Zend Technologies USA Inc. (http://www.zend.com)
  * @license   http://framework.zend.com/license/new-bsd New BSD License
  */
 
@@ -28,26 +28,22 @@ use Zend\Loader\StandardAutoloader;
  * --sort|-s                    Alphabetically sort classes
  */
 
-$zfLibraryPath = getenv('LIB_PATH') ? getenv('LIB_PATH') : __DIR__ . '/../library';
-if (is_dir($zfLibraryPath)) {
-    // Try to load StandardAutoloader from library
-    if (false === include($zfLibraryPath . '/Zend/Loader/StandardAutoloader.php')) {
-        echo 'Unable to locate autoloader via library; aborting' . PHP_EOL;
-        exit(2);
-    }
+// Setup/verify autoloading
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    // Local install
+    require __DIR__ . '/../vendor/autoload.php';
+} elseif (file_exists(getcwd() . '/vendor/autoload.php')) {
+    // Root project is current working directory
+    require getcwd() . '/vendor/autoload.php';
+} elseif (file_exists(__DIR__ . '/../../../autoload.php')) {
+    // Relative to composer install
+    require __DIR__ . '/../../../autoload.php';
 } else {
-    // Try to load StandardAutoloader from include_path
-    if (false === include('Zend/Loader/StandardAutoloader.php')) {
-        echo 'Unable to locate autoloader via include_path; aborting' . PHP_EOL;
-        exit(2);
-    }
+    fwrite(STDERR, "Unable to setup autoloading; aborting\n");
+    exit(2);
 }
 
 $libraryPath = getcwd();
-
-// Setup autoloading
-$loader = new StandardAutoloader(array('autoregister_zf' => true));
-$loader->register();
 
 $rules = array(
     'help|h'      => 'Get usage message',
@@ -220,6 +216,9 @@ $content = str_replace('\\\\', '\\', $content);
 // Exchange "array (" width "array("
 $content = str_replace('array (', 'array(', $content);
 
+// Identing array content
+$content = preg_replace('(\n  )', "\n    ", $content);
+
 // Align "=>" operators to match coding standard
 preg_match_all('(\n\s+([^=]+)=>)', $content, $matches, PREG_SET_ORDER);
 $maxWidth = 0;
@@ -228,13 +227,11 @@ foreach ($matches as $match) {
     $maxWidth = max($maxWidth, strlen($match[1]));
 }
 
-$content = preg_replace_callback(
-    '(\n\s+([^=]+)=>)',
-    function ($match) use ($maxWidth) {
-        return "\n  " . $match[1] . str_repeat(" ", $maxWidth - strlen($match[1])) . '=>';
-    },
-    $content
-);
+$content = preg_replace_callback('(\n\s+([^=]+)=>)', function ($matches) {
+    global $maxWidth;
+
+    return str_replace(' =>', str_repeat(' ', $maxWidth - strlen($matches[1])) . ' =>', $matches[0]);
+}, $content);
 
 // Make the file end by EOL
 $content = rtrim($content, "\n") . "\n";
